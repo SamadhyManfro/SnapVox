@@ -146,7 +146,7 @@ button.again{font:inherit;font-size:13px;padding:7px 14px;border-radius:9px;bord
 <div class="features">
   <div class="f"><b>Works on anything on screen</b><span>Websites, PDFs, images, videos and games. The text is recognized from the image, on your PC.</span></div>
   <div class="f"><b>Natural voices</b><span>Microsoft neural voices by default, with Piper (offline) and the Windows voice as automatic backups.</span></div>
-  <div class="f"><b>Detects the language</b><span>Picks the right voice automatically. Choosing a voice also installs that language for better recognition.</span></div>
+  <div class="f"><b>Detects the language</b><span>Picks the right voice automatically. Need another one? Add any of 28 languages from the voice menu.</span></div>
   <div class="f"><b>Save as MP3</b><span>Keep what was read, in Downloads or anywhere you choose.</span></div>
 </div>
 </div>
@@ -159,8 +159,8 @@ const W0=txt.split(" ");$("para").innerHTML=W0.map(w=>`<span>${w}</span>`).join(
 const scr=$("scr"),isl=$("isl"),fr=$("fr"),ants=$("ants"),hl=$("hl"),cap=$("cap"),page=$("page"),pop=$("pop");
 Q(".js-eq").forEach(q=>{for(let k=0;k<4;k++)q.appendChild(document.createElement("i"))});
 const speeds=[0.5,0.75,1,1.25,1.5,1.75,2];
-const voices=[["Aria · Microsoft","default"],["Ava · Microsoft",""],["Andrew · Microsoft",""],["Lessac",""],["Amy",""],["Ryan",""]];
-let spd=1,voice="Aria · Microsoft",pos="top",popFor=null,words=[],idx=0,tm=null,et=null,T=[],raf=null,scrolled=false,state="idle";
+const voices=[["Aria · Online","default"],["Ava · Online",""],["Andrew · Online",""],["Lessac · Offline",""],["Amy · Offline",""],["Ryan · Offline",""]];
+let spd=1,voice="Aria · Online",pos="top",popFor=null,words=[],idx=0,tm=null,et=null,T=[],raf=null,scrolled=false,state="idle";
 const later=(f,ms)=>T.push(setTimeout(f,ms));
 function R(el,ref){const a=el.getBoundingClientRect(),b=(ref||scr).getBoundingClientRect();return{x:a.left-b.left,y:a.top-b.top,w:a.width,h:a.height}}
 const set=(c,t)=>Q(c).forEach(e=>e.textContent=t);
@@ -185,7 +185,7 @@ function openPop(btn,html,onPick){if(popFor===btn){closePop();return}popFor=btn;
 const chk=c=>c?'<i class="ti ti-check"></i>':'';
 const on=(c,f)=>Q(c).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();f(e.currentTarget)}));
 on(".js-spd",b=>openPop(b,'<small>Speed</small>'+speeds.map(s=>`<div class="it" data-s="${s}"><span>${s}x</span>${chk(s==spd)}</div>`).join(""),ev=>{const d=ev.target.closest("[data-s]");if(d){setSpd(+d.dataset.s);closePop()}}));
-on(".js-voz",b=>openPop(b,'<small>English</small>'+voices.map(([v,t])=>`<div class="it" data-v="${v}"><span>${v}</span><span style="font-size:11px;opacity:.6">${t} ${v==voice?"✓":""}</span></div>`).join("")+'<hr><div class="it"><span>Read in another language</span><i class="ti ti-chevron-right"></i></div>',ev=>{const d=ev.target.closest("[data-v]");if(d){voice=d.dataset.v;closePop();set(".js-sub",voice+" · English");cap.textContent="Voice changed to "+voice+": it keeps reading from the current word."}}));
+on(".js-voz",b=>openPop(b,'<small>English</small>'+voices.map(([v,t])=>`<div class="it" data-v="${v}"><span>${v}</span><span style="font-size:11px;opacity:.6">${t} ${v==voice?"✓":""}</span></div>`).join("")+'<hr><div class="it"><span>Read in another language</span><i class="ti ti-chevron-right"></i></div><div class="it" data-add="1"><span><i class="ti ti-plus"></i> Add language…</span></div>',ev=>{if(ev.target.closest("[data-add]")){closePop();cap.textContent="Add language: search for Korean, Japanese, Russian and more. Its offline voice is downloaded too.";return}const d=ev.target.closest("[data-v]");if(d){voice=d.dataset.v;closePop();set(".js-sub",voice+" · English");cap.textContent="Voice changed to "+voice+": it keeps reading from the current word."}}));
 on(".js-more",b=>openPop(b,'<div class="it" data-a="s"><span><i class="ti ti-download"></i> Save MP3</span><span style="font-size:11px;opacity:.5">Downloads</span></div><div class="it" data-a="as"><span><i class="ti ti-folder"></i> Save as…</span></div><hr><small>Island position</small><div class="seg">'+[["top","Top"],["left","Left"],["right","Right"]].map(([k,l])=>`<span data-p="${k}" class="${k==pos?"on":""}">${l}</span>`).join("")+'</div><hr><div class="it" data-a="cfg"><span><i class="ti ti-settings"></i> Settings</span></div><div class="it" data-a="sug"><span><i class="ti ti-message"></i> Send a suggestion</span></div><div class="it" data-a="x"><span><i class="ti ti-x"></i> Close</span><span style="font-size:11px;opacity:.5">Esc</span></div>',ev=>{const p=ev.target.closest("[data-p]");if(p){setPos(p.dataset.p);return}const d=ev.target.closest("[data-a]");if(!d)return;closePop();const a=d.dataset.a;
  if(a==="x")closeAll();else cap.textContent=({s:"MP3 saved to Downloads.",as:"Opens the Windows dialog to pick a folder and a name.",cfg:"Opens Settings: voice per language, island position, default speed, MP3 folder, start with Windows, updates.",sug:"Opens a new suggestion on GitHub."})[a]}));
 on(".js-new",()=>reset(true));on(".js-pp",()=>pause());on(".js-prev",()=>jump(-1));on(".js-next",()=>jump(1));

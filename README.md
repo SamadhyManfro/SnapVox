@@ -20,7 +20,8 @@ SnapVox lives in the Windows tray. Press **Win + Ctrl + R**, drag over any text 
 (website, PDF, image, video, game…) and it reads it aloud, highlighting each word as it speaks.
 
 - **Works on anything on screen**: the text is recognized from the image (Windows OCR).
-- **Detects the language by itself** and picks the right voice.
+- **Detects the language by itself** and picks the right voice. Need another one? **Add language** in the voice menu
+  has 28 languages, including Korean, Japanese, Chinese, Russian, and Arabic.
 - **Natural voices**: Microsoft neural voices (Edge) by default; **Piper** (runs on your PC, offline) and the
   Windows voice as automatic fallbacks.
 - **Dynamic Island–style player**: pause, previous/next word, 0.5x–2x speed (changes instantly),

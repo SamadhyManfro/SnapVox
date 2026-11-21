@@ -33,15 +33,44 @@ internal sealed partial class WinOcrLanguageInstaller : IOcrLanguageInstaller
     private static string Ocr(string tag) => $"Language.OCR~~~{tag}~0.0.1.0";
     private static string Voice(string tag) => $"Language.TextToSpeech~~~{tag}~0.0.1.0";
 
-    // The voice is optional: not every OCR language has a Windows voice, so its failure doesn't fail the install.
+    /// <summary>
+    /// The package name for a language. Windows reports some installed OCR languages
+    /// differently from their packages ("ko" for ko-KR, "zh-Hans-CN" for zh-CN).
+    /// </summary>
+    internal string? PackageTag(string tag)
+    {
+        var exact = InstallableLanguages.FirstOrDefault(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase));
+        if (exact is not null)
+            return exact;
+        if (tag.StartsWith("zh-Hans", StringComparison.OrdinalIgnoreCase))
+            return "zh-CN";
+        if (tag.StartsWith("zh-Hant", StringComparison.OrdinalIgnoreCase))
+            return "zh-TW";
+        var variant = InstallableLanguages.FirstOrDefault(t => t.StartsWith(tag + "-", StringComparison.OrdinalIgnoreCase));
+        if (variant is not null)
+            return variant;
+        string language = tag.Split('-')[0];
+        return InstallableLanguages.FirstOrDefault(t => t.Split('-')[0].Equals(language, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Only the text recognition: each Windows package takes minutes to install, whatever its size,
+    // and the online voices don't need the Windows voice. It stays available as a separate install.
     public Task<InstallResult> InstallAsync(string tag, IProgress<int>? progress = null) =>
-        RunAsync(tag, progress, [("Add", Ocr(tag), true), ("Add", Voice(tag), false)]);
+        PackageTag(tag) is { } package ? RunAsync(package, progress, [("Add", Ocr(package), true)]) : Task.FromResult(InstallResult.Failed);
+
+    // The voice is optional: if its package fails, the text recognition still counts as installed.
+    public Task<InstallResult> InstallWithVoiceAsync(string tag, IProgress<int>? progress = null) =>
+        PackageTag(tag) is { } package
+            ? RunAsync(package, progress, [("Add", Ocr(package), true), ("Add", Voice(package), false)])
+            : Task.FromResult(InstallResult.Failed);
 
     public Task<InstallResult> InstallVoiceAsync(string tag, IProgress<int>? progress = null) =>
-        RunAsync(tag, progress, [("Add", Voice(tag), true)]);
+        PackageTag(tag) is { } package ? RunAsync(package, progress, [("Add", Voice(package), true)]) : Task.FromResult(InstallResult.Failed);
 
     public Task<InstallResult> RemoveAsync(string tag, IProgress<int>? progress = null) =>
-        RunAsync(tag, progress, [("Remove", Voice(tag), false), ("Remove", Ocr(tag), true)]);
+        PackageTag(tag) is { } package
+            ? RunAsync(package, progress, [("Remove", Voice(package), false), ("Remove", Ocr(package), true)])
+            : Task.FromResult(InstallResult.Failed);
 
     private async Task<InstallResult> RunAsync(string tag, IProgress<int>? progress, (string Verb, string Capability, bool Required)[] steps)
     {

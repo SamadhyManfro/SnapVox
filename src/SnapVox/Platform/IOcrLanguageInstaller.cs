@@ -14,10 +14,13 @@ public interface IOcrLanguageInstaller
     /// <summary>Languages that already have a system voice installed (BCP-47 tags).</summary>
     IReadOnlyList<string> InstalledVoiceLanguages { get; }
 
-    /// <summary>Installs OCR + voice. <paramref name="progress"/> receives 0–100.</summary>
+    /// <summary>Installs the text recognition (OCR). <paramref name="progress"/> receives 0–100.</summary>
     Task<InstallResult> InstallAsync(string languageTag, IProgress<int>? progress = null);
 
-    /// <summary>Installs only the voice (for languages whose OCR is already installed).</summary>
+    /// <summary>Installs the text recognition and the Windows voice with a single permission prompt.</summary>
+    Task<InstallResult> InstallWithVoiceAsync(string languageTag, IProgress<int>? progress = null);
+
+    /// <summary>Installs the Windows voice, used when there is no online or Piper voice.</summary>
     Task<InstallResult> InstallVoiceAsync(string languageTag, IProgress<int>? progress = null);
 
     /// <summary>Removes the language's OCR + voice.</summary>

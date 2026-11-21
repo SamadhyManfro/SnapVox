@@ -20,7 +20,7 @@ internal sealed class WinTts : ITtsEngine
 
         var chosen = SpeechSynthesizer.AllVoices.FirstOrDefault(v => v.DisplayName == voice)
                      ?? SpeechSynthesizer.AllVoices.FirstOrDefault(v => v.Language.StartsWith(languageCode + "-", StringComparison.OrdinalIgnoreCase))
-                     ?? SpeechSynthesizer.DefaultVoice;
+                     ?? throw new InvalidOperationException($"No Windows voice for '{languageCode}'."); // never read it with the wrong language's voice
         synth.Voice = chosen;
 
         using var stream = await synth.SynthesizeTextToStreamAsync(text).AsTask(ct).ConfigureAwait(false);

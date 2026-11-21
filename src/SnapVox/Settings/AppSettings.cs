@@ -9,6 +9,9 @@ public sealed class AppSettings
     /// <summary>Chosen voice per language: 2-letter code → voice id (see VoiceCatalog). Empty = default.</summary>
     public Dictionary<string, string> Voices { get; set; } = new();
 
+    /// <summary>Languages the user added through "Add language" (2-letter codes).</summary>
+    public List<string> AddedLanguages { get; set; } = [];
+
     /// <summary>Language of the last chosen voice (the "Voice" button shows that language's voice).</summary>
     public string? LastVoiceLanguage { get; set; }
 

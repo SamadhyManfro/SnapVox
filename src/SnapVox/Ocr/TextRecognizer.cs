@@ -46,13 +46,50 @@ internal sealed partial class TextRecognizer
                 result = second;
         }
 
-        // Boxes go back to the original size of the selection.
-        var lines = result.Lines
+        // A Latin OCR turns Korean, Russian… into garbage the detector can't identify:
+        // also try the installed OCRs of other scripts and keep one whose text really is in that language.
+        if (await BestOtherScriptAsync(pixels, w, h, Prefix(first.OcrLanguageTag)).ConfigureAwait(false) is { } other)
+        {
+            result = other.Output;
+            lang = other.Language;
+        }
+
+        return new OcrOutput(Rescaled(result, scale), lang, result.OcrLanguageTag);
+    }
+
+    /// <summary>Recognizes the selection with one specific language (the user picked a voice in it).</summary>
+    public async Task<OcrOutput> RecognizeInLanguageAsync(byte[] bgra, int width, int height, string ocrTag, string language)
+    {
+        int scale = Math.Max(width, height) * 2 <= MaxUpscaledSide ? 2 : 1;
+        var (pixels, w, h) = scale == 2 ? Upscale2x(bgra, width, height) : (bgra, width, height);
+        var result = await _ocr.RecognizeAsync(pixels, w, h, ocrTag).ConfigureAwait(false);
+        return new OcrOutput(Rescaled(result, scale), language, result.OcrLanguageTag);
+    }
+
+    private async Task<(OcrOutput Output, string Language)?> BestOtherScriptAsync(byte[] pixels, int w, int h, string? firstLanguage)
+    {
+        (OcrOutput Output, string Language)? best = null;
+        foreach (string tag in _ocr.AvailableLanguages)
+        {
+            string language = Prefix(tag)!;
+            if (language == firstLanguage || !Speech.VoiceCatalog.NeedsOwnOcr(language))
+                continue;
+            var candidate = await _ocr.RecognizeAsync(pixels, w, h, tag).ConfigureAwait(false);
+            string compact = string.Concat(candidate.Text.Where(c => !char.IsWhiteSpace(c)));
+            int letters = compact.Count(char.IsLetter);
+            if (letters < 2 || compact.Count(c => char.IsLetter(c) && c >= 'Ͱ') < letters / 2.0)
+                continue;
+            if (_detector.DetectAll(compact).FirstOrDefault() == language && (best is null || compact.Length > best.Value.Output.Text.Length))
+                best = (candidate, language);
+        }
+        return best;
+    }
+
+    /// <summary>Boxes go back to the original size of the selection.</summary>
+    private static List<OcrLine> Rescaled(OcrOutput result, int scale) =>
+        result.Lines
             .Select(l => new OcrLine(l.Words.Select(wd => wd with { Box = Divide(wd.Box, scale) }).ToList()))
             .ToList();
-
-        return new OcrOutput(lines, lang, result.OcrLanguageTag);
-    }
 
     private static string? Prefix(string? tag) => tag?.Split('-')[0].ToLowerInvariant();
 

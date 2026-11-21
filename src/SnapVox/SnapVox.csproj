@@ -11,7 +11,7 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <AssemblyName>SnapVox</AssemblyName>
     <RootNamespace>SnapVox</RootNamespace>
-    <Version>0.1.2</Version>
+    <Version>0.1.3</Version>
     <!-- Project license (Piper uses espeak-ng, which is GPL). -->
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <!-- Lightweight: native AOT for the final release (needs the Visual Studio C++ build tools). -->

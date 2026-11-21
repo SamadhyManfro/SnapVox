@@ -54,7 +54,8 @@ internal sealed class IslandWindow : Window
     private bool _preview;
 
     // Parts that change without rebuilding everything.
-    private TextBlock? _titleBlock, _subtitleBlock, _playIcon, _timeA, _timeT, _speedLabel;
+    private MarqueeText? _titleBlock, _subtitleBlock;
+    private TextBlock? _playIcon, _timeA, _timeT, _speedLabel;
     private Control? _verticalLogo, _playIconHost;
     private Spinner? _spinner;
     private ProgressTrack? _progress;
@@ -71,6 +72,7 @@ internal sealed class IslandWindow : Window
     public event Action<VoiceInfo>? VoiceChosen;
     public event Action? NewSelectionRequested;
     public event Action<bool>? SaveRequested; // true = "Save as…"
+    public event Action? AddLanguageRequested;
 
     /// <summary>There is audio to save (enables "Save MP3" in the ⋮ menu).</summary>
     public bool CanSave { get; set; }
@@ -106,12 +108,12 @@ internal sealed class IslandWindow : Window
             ClipToBounds = true,
             Margin = new Thickness(8),
             Opacity = 0,
-            RenderTransform = TransformOperations.Parse("scale(0.6)"),
+            RenderTransform = TransformOperations.Parse("scale(0.72)"),
             Child = new Panel { Children = { _glow, _content } },
             Transitions =
             [
-                new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(250) },
-                new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(560), Easing = new BackEaseOut() },
+                new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(180) },
+                new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(520), Easing = new SoftSpring() },
             ],
         };
         Content = _pill;
@@ -281,7 +283,8 @@ internal sealed class IslandWindow : Window
 
     private void Rebuild()
     {
-        _titleBlock = _subtitleBlock = _playIcon = _timeA = _timeT = _speedLabel = null;
+        _titleBlock = _subtitleBlock = null;
+        _playIcon = _timeA = _timeT = _speedLabel = null;
         _verticalLogo = _playIconHost = null;
         _spinner = null;
         _progress = null;
@@ -289,6 +292,13 @@ internal sealed class IslandWindow : Window
         _needsText.Clear();
         _eqBars.Clear();
 
+        // Grows out of the screen edge it is attached to.
+        _pill.RenderTransformOrigin = AppSettings.Current.IslandPosition switch
+        {
+            "left" => new RelativePoint(0, 0.5, RelativeUnit.Relative),
+            "right" => new RelativePoint(1, 0.5, RelativeUnit.Relative),
+            _ => new RelativePoint(0.5, 0, RelativeUnit.Relative),
+        };
         _glow.Background = GlowBrush(Vertical);
         _content.Child = Vertical ? BuildVertical() : BuildHorizontal();
         SetImproveAction(_improveLabel, _improveAction);
@@ -313,8 +323,8 @@ internal sealed class IslandWindow : Window
         var logo = Logo(46);
         DockPanel.SetDock(logo, Dock.Left);
         top.Children.Add(logo);
-        _titleBlock = new TextBlock { FontSize = 14, FontWeight = FontWeight.Medium, Foreground = Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis };
-        _subtitleBlock = new TextBlock { FontSize = 12, Foreground = Muted, TextTrimming = TextTrimming.CharacterEllipsis };
+        _titleBlock = new MarqueeText { FontSize = 14, FontWeight = FontWeight.Medium, Foreground = Brushes.White };
+        _subtitleBlock = new MarqueeText { FontSize = 12, Foreground = Muted };
         top.Children.Add(new StackPanel
         {
             Margin = new Thickness(12, 0, 8, 0),
@@ -499,17 +509,39 @@ internal sealed class IslandWindow : Window
         menu.Items.Add(new MenuItem { Header = L.LanguageName(_language), IsEnabled = false });
         foreach (var v in VoiceCatalog.ForLanguage(_language).OrderBy(v => v.Engine == VoiceEngine.Edge ? 0 : 1))
             menu.Items.Add(VoiceItem(v, chosen?.Id == v.Id));
+        if (OfflineVoiceItem(_language) is { } installOffline)
+            menu.Items.Add(installOffline);
 
         var others = new MenuItem { Header = L.OtherLanguages };
-        foreach (var lang in VoiceCatalog.Languages.Where(l => l != _language))
+        foreach (var lang in VoiceCatalog.ActiveLanguages.Where(l => l != _language))
         {
             var langItem = new MenuItem { Header = L.LanguageName(lang) };
             foreach (var v in VoiceCatalog.ForLanguage(lang).OrderBy(v => v.Engine == VoiceEngine.Edge ? 0 : 1))
                 langItem.Items.Add(VoiceItem(v, false));
+            if (OfflineVoiceItem(lang) is { } installOther)
+                langItem.Items.Add(installOther);
             others.Items.Add(langItem);
         }
         menu.Items.Add(new Separator());
         menu.Items.Add(others);
+
+        var add = new MenuItem { Header = "+  " + L.AddLanguage };
+        add.Click += (_, _) => AddLanguageRequested?.Invoke();
+        menu.Items.Add(add);
+    }
+
+    /// <summary>For languages with no Piper voice: installs the Windows voice. Settings shows the progress and the restart.</summary>
+    private static MenuItem? OfflineVoiceItem(string language)
+    {
+        if (!VoiceCatalog.CanInstallWindowsVoice(language) || VoiceCatalog.DefaultFor(language) is not { } voice)
+            return null;
+        var item = new MenuItem { Header = "+  " + L.InstallOfflineVoice };
+        item.Click += (_, _) =>
+        {
+            LanguagePacks.InstallVoice(voice.Locale);
+            SettingsWindow.Open();
+        };
+        return item;
     }
 
     private MenuItem VoiceItem(VoiceInfo v, bool selected)
@@ -714,7 +746,7 @@ internal sealed class IslandWindow : Window
 
         void Player(IslandWindow w)
         {
-            w.ShowPlayer("The new system update brings performance improvements…", "Aria · Microsoft · English", "en");
+            w.ShowPlayer("The new system update brings performance improvements…", "Aria · Online · English", "en");
             w.SetPlaying(true);
             w.SetProgress(TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(11));
             w.SetSpeed(1.25);
@@ -722,7 +754,7 @@ internal sealed class IslandWindow : Window
         }
         void Loading(IslandWindow w)
         {
-            w.ShowLoading(L.GeneratingVoice("Aria · Microsoft"), "The new system update brings improvements…");
+            w.ShowLoading(L.GeneratingVoice("Aria · Online"), "The new system update brings improvements…");
             w._spinner?.Advance(); w._spinner?.Advance();
         }
 
@@ -733,6 +765,13 @@ internal sealed class IslandWindow : Window
         Shot("5_idle_left.png", _ => { }, "left");
         Shot("6_loading_left.png", Loading, "left");
         AppSettings.Current.IslandPosition = saved;
+    }
+
+    /// <summary>A soft spring: it settles with a tiny overshoot that always fits inside the window.</summary>
+    private sealed class SoftSpring : Easing
+    {
+        public override double Ease(double progress) =>
+            progress >= 1 ? 1 : 1 - Math.Exp(-10 * progress) * Math.Cos(8.5 * progress);
     }
 
     /// <summary>Clickable progress bar; while loading it shows a light running from side to side.</summary>

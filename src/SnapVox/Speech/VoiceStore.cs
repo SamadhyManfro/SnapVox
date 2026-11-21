@@ -31,6 +31,23 @@ internal static class VoiceStore
         ["pt_BR-dii-high"] = "76bdf009bb29e69b12336de833d0d219ffa558f4281330eb141e4a0569c108a2",
         ["pt_BR-faber-medium"] = "7add3f923ad6bc25ca8a192805fd1a64d1b3893e4611c4a9719545a825039a83",
         ["pt_BR-jeff-medium"] = "da4c870fc7b20600c74261b3e1dd1c816da2ce063e18c46e1f2cd86dea88f3f0",
+        ["ar_JO-kareem-medium"] = "9ebbcea30e0fbd588f7b2cb45ee897d6aeb1bf5791cbc037a7b5a3f641e3dbce",
+        ["cs_CZ-jirka-medium"] = "321aafd83dd89b3d5b2c36c5898e0710d4f472f3c191cb7f73901a89b7f8539f",
+        ["da_DK-talesyntese-medium"] = "f2e2cbcdb2b21e76f93635b35105d07b37997ace434d7289d04b689a97c19bd0",
+        ["el_GR-rapunzelina-low"] = "bb868070a9ba0d7220b3d7c9291a998c2f60accdb73525bd63b8751b86dd4839",
+        ["fi_FI-harri-medium"] = "a7fd608e73983c366a5e0bcd13382e6529a6749f67efc406b5a7f9021e3a8b1d",
+        ["hu_HU-anna-medium"] = "c67b13e57b71eca19098fe499afc35ebce8f63a0b524017c786af2025821216a",
+        ["no_NO-talesyntese-medium"] = "dcb7c36b7222e290cca1fd4cdecb474e7fd651dc5b0d3d42c33d416a8e62018b",
+        ["nl_NL-pim-medium"] = "e78ed301bf6fc66561a04c110754cd6928d772630a3b80b09a83f89410130171",
+        ["pl_PL-gosia-medium"] = "75bd34dcbdc4dd98d763954756b4b34b4208100497c836381542e4d73dcefa9c",
+        ["ro_RO-mihai-medium"] = "cfbee3cdc25cf063339f69e189f4d93cc3be6610d267567537323ced3cf87f4d",
+        ["ru_RU-irina-medium"] = "1fc0f54e5e084fe287c07909f2f6e0ba6d857864cf800e3ab80286a4e8233008",
+        ["sk_SK-lili-medium"] = "a00dfbca5d34733862a59d9e309f4e94a92fccc9337c2b124de9a241b604fc0d",
+        ["sl_SI-artur-medium"] = "df805f31c4513864edebf7e287cf0b54d72788fc661ed73f88dc4e5aabc5efd5",
+        ["sr_RS-serbski_institut-medium"] = "b8c100e5ff885d11ff96ad92a953f4b82e1cd649f9ac60a77ae4553d37507b2b",
+        ["sv_SE-lisa-medium"] = "78b5f6808e513d545d9284a015075ef31f09623e6c08d6186a29a1997aa577d7",
+        ["tr_TR-fahrettin-medium"] = "2ee3c18b5dc0a5faf913f995b027163befa6e7a6ad2f5c6b8a2e99fe1aad8b6d",
+        ["zh_CN-huayan-medium"] = "dbdfec42b91d9cee31cce9ff4b3e9c305eb6fbf60546d071f7e46273554cce6b",
     };
 
     public static string Root { get; } = Path.Combine(AppPaths.Local, "voices");

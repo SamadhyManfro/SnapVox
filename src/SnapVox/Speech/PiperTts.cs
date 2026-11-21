@@ -76,7 +76,7 @@ internal sealed partial class PiperTts : ITtsEngine, IDisposable
 
         _tts = new OfflineTts(config);
         _loadedVoice = voice.Id;
-        Log.Info($"Piper carregado: {voice.Id} ({_tts.SampleRate} Hz)");
+        Log.Info($"Piper loaded: {voice.Id} ({_tts.SampleRate} Hz)");
         return _tts;
     }
 
@@ -157,9 +157,11 @@ internal sealed partial class PiperTts : ITtsEngine, IDisposable
         }
     }
 
-    [GeneratedRegex(@"[.!?;:]+[""'”’)\]]*(\s+|$)|\n+")]
+    // Chinese punctuation has no space after it.
+    [GeneratedRegex(@"[.!?;:]+[""'”’)\]]*(\s+|$)|[。！？；]+[”’」』）]*|\n+")]
     private static partial Regex SentenceEnd();
 
-    [GeneratedRegex(@"\S+")]
+    // Chinese and Japanese have no spaces: each character counts as a word for the highlight.
+    [GeneratedRegex(@"[぀-ヿ㐀-䶿一-鿿]|[^\s぀-ヿ㐀-䶿一-鿿]+")]
     private static partial Regex WordRegex();
 }

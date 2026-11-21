@@ -93,8 +93,9 @@ internal sealed class ReadAloud : IDisposable
                 Piper.DownloadProgress = new Progress<int>(p => DownloadProgress?.Invoke(piper, p));
                 return Piper.SynthesizeAsync(text, lang, piper.Id, ct);
             }, piper));
-        if (Settings.AppSettings.Current.WindowsVoiceFallback)
-            attempts.Add(("Windows", () => WindowsVoice.SynthesizeAsync(text, lang, null, ct), null));
+        bool windowsChosen = chosen?.Engine == VoiceEngine.Windows;
+        if (windowsChosen || Settings.AppSettings.Current.WindowsVoiceFallback)
+            attempts.Add(("Windows", () => WindowsVoice.SynthesizeAsync(text, lang, null, ct), windowsChosen ? chosen : null));
 
         Exception? last = null;
         foreach (var (label, run, voice) in attempts)
@@ -103,7 +104,7 @@ internal sealed class ReadAloud : IDisposable
             {
                 var audio = await run().ConfigureAwait(false);
                 VoiceName = voice?.DisplayName ?? audio.VoiceName;
-                UsedOfflineVoice = label == "Windows";
+                UsedOfflineVoice = label == "Windows" && !windowsChosen; // a fallback, not the user's choice
                 Log.Info($"Reading with {label}: {VoiceName}");
                 return audio;
             }
@@ -180,20 +181,27 @@ internal sealed class ReadAloud : IDisposable
             .OrderBy(t => t.Start)
             .ToList();
 
-    /// <summary>Joins the words with spaces and keeps where each one starts in the text.</summary>
+    /// <summary>
+    /// Joins the words and keeps where each one starts in the text. Words are separated by spaces,
+    /// except in Chinese and Japanese, which don't use them (a space there would become a pause).
+    /// </summary>
     internal static string BuildText(IReadOnlyList<OcrWord> words, out int[] starts)
     {
         starts = new int[words.Count];
         var sb = new System.Text.StringBuilder();
         for (int i = 0; i < words.Count; i++)
         {
-            if (i > 0)
+            if (i > 0 && !(IsCjk(sb[^1]) && words[i].Text.Length > 0 && IsCjk(words[i].Text[0])))
                 sb.Append(' ');
             starts[i] = sb.Length;
             sb.Append(words[i].Text);
         }
         return sb.ToString();
     }
+
+    private static bool IsCjk(char c) =>
+        c is >= '　' and <= 'ヿ' or >= '㐀' and <= '䶿' or >= '一' and <= '鿿'
+            or >= '豈' and <= '﫿' or >= '＀' and <= '￯';
 
     private static int WordAtChar(IReadOnlyList<OcrWord> words, int[] starts, int charIndex)
     {

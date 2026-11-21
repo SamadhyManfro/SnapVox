@@ -142,7 +142,7 @@ internal sealed class SettingsWindow : Window
         content.Children.Add(ReadingLanguagesSection());
         content.Children.Add(new TextBlock
         {
-            Text = $"SnapVox 0.1 · {L.OpenSource}",
+            Text = $"SnapVox {Updater.CurrentVersion} · {L.OpenSource}",
             FontSize = 11,
             Foreground = Muted,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -279,13 +279,15 @@ internal sealed class SettingsWindow : Window
 
         foreach (var tag in LanguagePacks.InstalledOcr)
         {
-            bool isSystem = tag.StartsWith(systemLang + "-", StringComparison.OrdinalIgnoreCase);
-            bool hasVoice = voices.Any(v => v.Equals(tag, StringComparison.OrdinalIgnoreCase));
+            string code = tag.Split('-')[0].ToLowerInvariant();
+            bool isSystem = code.Equals(systemLang, StringComparison.OrdinalIgnoreCase);
+            bool hasWindowsVoice = voices.Any(v => v.Split('-')[0].Equals(code, StringComparison.OrdinalIgnoreCase));
+            bool canRead = Speech.VoiceCatalog.HasUsableVoice(code);
 
             var text = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
             text.Children.Add(new TextBlock { Text = isSystem ? "" : "", FontFamily = IconFont, FontSize = 11, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center });
             text.Children.Add(new TextBlock { Text = L.LanguageName(tag), FontSize = 12, Foreground = Brushes.White });
-            if (!hasVoice)
+            if (!canRead)
                 text.Children.Add(new TextBlock { Text = "· " + L.NoVoice, FontSize = 12, Foreground = Warning });
 
             var chip = new Button
@@ -300,7 +302,7 @@ internal sealed class SettingsWindow : Window
             };
 
             var menu = new MenuFlyout { Placement = PlacementMode.Bottom };
-            if (!hasVoice)
+            if (!hasWindowsVoice)
             {
                 var installVoice = new MenuItem { Header = L.InstallVoice };
                 installVoice.Click += (_, _) => LanguagePacks.InstallVoice(tag);
@@ -397,6 +399,13 @@ internal sealed class SettingsWindow : Window
             return;
         }
 
+        if (LanguagePacks.VoiceDownloadText is { } download)
+        {
+            ShowStatus(download, Muted);
+            return;
+        }
+
+        _status.IsVisible = LanguagePacks.LastResult is not null;
         if (LanguagePacks.LastResult is { } result)
         {
             var color = result.Kind switch
@@ -406,8 +415,9 @@ internal sealed class SettingsWindow : Window
                 _ => Muted,
             };
             bool ok = result.Kind == LanguagePacks.StatusKind.Success;
-            ShowStatus(ok ? $"{result.Text}. {L.RestartForVoice}" : result.Text, color);
-            _restart.IsVisible = ok;
+            bool restart = ok && LanguagePacks.RestartRecommended;
+            ShowStatus(restart ? $"{result.Text}. {L.RestartForVoice}" : result.Text, color);
+            _restart.IsVisible = restart;
             if (ok)
                 _search.Text = "";
         }
@@ -424,7 +434,7 @@ internal sealed class SettingsWindow : Window
 
     /// <summary>
     /// Voice choice per language: a menu with the languages and, in each one, its voices.
-    /// Piper (runs on the PC) has no label; Edge voices show "· Microsoft".
+    /// Each voice says whether it is "Online" or "Offline". The last item adds another language.
     /// </summary>
     private Control VoicePicker()
     {
@@ -443,14 +453,14 @@ internal sealed class SettingsWindow : Window
         _flyouts.Add(menu);
         void Rebuild()
         {
-            // The button shows the chosen voice, e.g. "Portuguese: Francisca · Microsoft".
+            // The button shows the chosen voice, e.g. "Portuguese: Francisca · Online".
             string shownLang = Settings.AppSettings.Current.LastVoiceLanguage
                                ?? CultureInfo.InstalledUICulture.TwoLetterISOLanguageName;
             if (Speech.VoiceCatalog.ChosenFor(shownLang) is { } shown)
                 label.Text = $"{L.LanguageName(shownLang)}: {shown.DisplayName}  ";
 
             menu.Items.Clear();
-            foreach (var lang in Speech.VoiceCatalog.Languages)
+            foreach (var lang in Speech.VoiceCatalog.ActiveLanguages)
             {
                 var current = Speech.VoiceCatalog.ChosenFor(lang);
                 var langItem = new MenuItem { Header = $"{L.LanguageName(lang)}  —  {current?.DisplayName}" };
@@ -460,7 +470,7 @@ internal sealed class SettingsWindow : Window
                 // Edge (default) first; Piper after the separator.
                 foreach (var voice in Speech.VoiceCatalog.ForLanguage(lang).OrderBy(v => v.Engine == Speech.VoiceEngine.Edge ? 0 : 1))
                 {
-                    if (voice.Engine == Speech.VoiceEngine.Piper && !addedSeparator)
+                    if (voice.Engine != Speech.VoiceEngine.Edge && !addedSeparator)
                     {
                         langItem.Items.Add(new Separator());
                         addedSeparator = true;
@@ -469,9 +479,7 @@ internal sealed class SettingsWindow : Window
                     var details = new List<string> { voice.Female ? L.Female : L.Male };
                     if (voice.Id == defaultId)
                         details.Add(L.Default);
-                    if (voice.Engine == Speech.VoiceEngine.Edge)
-                        details.Add(L.VoicesOnline);
-                    else if (!Speech.VoiceStore.IsDownloaded(voice))
+                    if (voice.Engine == Speech.VoiceEngine.Piper && !Speech.VoiceStore.IsDownloaded(voice))
                         details.Add(L.DownloadSize(voice.DownloadMb));
 
                     bool selected = current?.Id == voice.Id;
@@ -488,8 +496,32 @@ internal sealed class SettingsWindow : Window
                     };
                     langItem.Items.Add(item);
                 }
+                if (Speech.VoiceCatalog.CanInstallWindowsVoice(lang) && Speech.VoiceCatalog.DefaultFor(lang) is { } online)
+                {
+                    langItem.Items.Add(new Separator());
+                    var installOffline = new MenuItem { Header = "+  " + L.InstallOfflineVoice };
+                    installOffline.Click += (_, _) => LanguagePacks.InstallVoice(online.Locale);
+                    langItem.Items.Add(installOffline);
+                }
                 menu.Items.Add(langItem);
             }
+
+            menu.Items.Add(new Separator());
+            var add = new MenuItem { Header = "+  " + L.AddLanguage };
+            add.Click += async (_, _) =>
+            {
+                if (await AddLanguageWindow.AskAsync() is not { } code || Speech.VoiceCatalog.DefaultFor(code) is not { } voice)
+                    return;
+                Settings.AppSettings.Update(s =>
+                {
+                    if (!s.AddedLanguages.Contains(code))
+                        s.AddedLanguages.Add(code);
+                    s.Voices[code] = voice.Id;
+                    s.LastVoiceLanguage = code;
+                });
+                LanguagePacks.AddLanguage(voice);
+            };
+            menu.Items.Add(add);
         }
 
         Rebuild();

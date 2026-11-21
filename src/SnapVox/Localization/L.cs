@@ -82,6 +82,18 @@ internal static class L
     public static string SaveAs => Pt ? "Salvar como…" : "Save as…";
     public static string Close => Pt ? "Fechar" : "Close";
     public static string OtherLanguages => Pt ? "Ler em outro idioma" : "Read in another language";
+    public static string InstallingShort(string lang, int percent) =>
+        Pt ? $"Instalando {lang} · {percent}%" : $"Installing {lang} · {percent}%";
+    public static string InstallInBackground => Pt
+        ? "Leva alguns minutos. Esc não cancela"
+        : "Takes a few minutes. Esc won't cancel it";
+    public static string InstallOfflineVoice => Pt ? "Instalar voz offline" : "Install offline voice";
+    public static string AddLanguage => Pt ? "Adicionar idioma…" : "Add language…";
+    public static string AddLanguageTitle => Pt ? "Adicionar idioma" : "Add language";
+    public static string AddLanguageSearch => Pt ? "Coreano, 한국어, Korean" : "Korean, 한국어, Coreano";
+    public static string AddLanguageHint => Pt
+        ? "O Windows pede permissão para instalar o reconhecimento de texto do idioma."
+        : "Windows asks for permission to install the language's text recognition.";
     public static string PreviousWord => Pt ? "Palavra anterior" : "Previous word";
     public static string NextWord => Pt ? "Próxima palavra" : "Next word";
     public static string PlayPause => Pt ? "Tocar / pausar (Espaço)" : "Play / pause (Space)";
@@ -147,6 +159,9 @@ internal static class L
             return tagOrCode;
         }
     }
+
+    /// <summary>The language's Portuguese name, so the search also finds it on a Windows in another language.</summary>
+    public static string PortugueseName(string code) => PtNames.GetValueOrDefault(code, code);
 
     private static readonly Dictionary<string, string> PtNames = new()
     {

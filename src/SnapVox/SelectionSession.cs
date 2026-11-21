@@ -37,6 +37,8 @@ internal sealed class SelectionSession
     private CancellationTokenSource? _cts;
     private OcrOutput? _ocr;
     private bool _readingStarting;
+    private (byte[] Pixels, int Width, int Height)? _selectionPixels;
+    private bool _languageInstallRunning, _showingBackgroundStatus;
     private IHotkeyService? _escape;
     private Task? _escapeRegistered;
     private int _lastWord = -2;
@@ -47,6 +49,7 @@ internal sealed class SelectionSession
         // ~30 times per second: spoken word → highlight; position → progress bar.
         _tick = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => OnTick());
         AppSettings.Changed += OnSettingsChanged;
+        LanguagePacks.Changed += OnLanguagePacksChanged;
     }
 
     public bool IsActive => _overlays.Count > 0;
@@ -96,10 +99,12 @@ internal sealed class SelectionSession
         _island.SeekRequested += f => _reader?.Seek(f);
         _island.SpeedChosen += SetSpeed;
         _island.VoiceChosen += OnVoiceChosen;
+        _island.AddLanguageRequested += () => _ = AddLanguageAsync();
         _island.NewSelectionRequested += () => ResetForNewSelection(null);
         _island.SetSpeed(AppSettings.Current.Speed);
         UiWatchdog.Step("opening the island");
         _island.Show();
+        ShowInstallProgressIfIdle();
 
         // Focus the dimming on the mouse's monitor so the keyboard (Space, arrows) works.
         UiWatchdog.Step("focusing the dimming");
@@ -133,6 +138,7 @@ internal sealed class SelectionSession
             PlatformServices.BringToTop(_island);
             PlatformServices.BringToTop(SettingsWindow.Current);
             PlatformServices.BringToTop(PrivacyWindow.Current);
+            PlatformServices.BringToTop(AddLanguageWindow.Current);
         }, DispatcherPriority.Background);
     }
 
@@ -150,6 +156,7 @@ internal sealed class SelectionSession
         _reader?.Dispose();
         _reader = null;
         _ocr = null;
+        _selectionPixels = null;
         _active = null;
         _lastWord = -2;
         _readingStarting = false;
@@ -159,6 +166,7 @@ internal sealed class SelectionSession
 
         _island?.SetImproveAction(null, null);
         _island?.ShowIdle();
+        ShowInstallProgressIfIdle();
         KeepIslandOnTop();
     }
 
@@ -178,6 +186,7 @@ internal sealed class SelectionSession
             Log.Info("Fresh capture failed, using the previous one: " + ex.Message);
         }
         var (pixels, w, h) = _snapshot.CropBgra(rect);
+        _selectionPixels = (pixels, w, h);
         var image = ScreenSnapshot.ToBitmap(pixels, w, h);
 
         _active = source;
@@ -206,24 +215,8 @@ internal sealed class SelectionSession
                 return;
             }
 
-            string languageName = L.LanguageName(text.LanguageCode ?? "en");
-
-            // Detected language without OCR or without a Windows voice: offer to install it (one click).
-            if (text.LanguageCode is { } code)
-            {
-                bool Matches(string t) => t.StartsWith(code + "-", StringComparison.OrdinalIgnoreCase);
-                bool hasOcr = _recognizer.OcrLanguages.Any(Matches);
-                bool hasVoice = LanguagePacks.InstalledVoices.Any(Matches);
-                if (!hasOcr)
-                {
-                    // Install the language right away (reading + Windows voice) in the chosen voice's variant (e.g. pt-BR).
-                    string locale = VoiceCatalog.ChosenFor(code)?.Locale
-                                    ?? LanguagePacks.InstallableLanguages.FirstOrDefault(Matches) ?? code;
-                    _island?.SetImproveAction(L.ImproveReading, () => { LanguagePacks.EnsureInstalled(locale); SettingsWindow.Open(); });
-                }
-                else if (!hasVoice && _recognizer.OcrLanguages.FirstOrDefault(Matches) is { } tag)
-                    _island?.SetImproveAction(L.MissingVoice(languageName), () => { LanguagePacks.InstallVoice(tag); SettingsWindow.Open(); });
-            }
+            // Detected language without OCR or without any usable voice: offer to install it (one click).
+            UpdateImproveAction(text.LanguageCode);
 
             // ---- Voice ----
             _ocr = text;
@@ -239,6 +232,58 @@ internal sealed class SelectionSession
             if (generation == _generation)
                 _island?.ShowMessage(_reader is null ? L.NoText : L.VoiceFailed);
         }
+    }
+
+    /// <summary>Amber button: only while this language really lacks its text recognition or any usable voice.</summary>
+    private void UpdateImproveAction(string? code)
+    {
+        _island?.SetImproveAction(null, null);
+        if (code is null)
+            return;
+        if (!LanguagePacks.HasReadingLanguage(code))
+        {
+            // Install it in the chosen voice's variant (e.g. pt-BR).
+            string locale = VoiceCatalog.ChosenFor(code)?.Locale
+                            ?? LanguagePacks.InstallableLanguages.FirstOrDefault(t => t.Split('-')[0] == code) ?? code;
+            _island?.SetImproveAction(L.ImproveReading, () => { LanguagePacks.EnsureInstalled(locale); SettingsWindow.Open(); });
+        }
+        else if (!VoiceCatalog.HasUsableVoice(code) && LanguagePacks.OcrTagFor(code) is { } tag)
+        {
+            _island?.SetImproveAction(L.MissingVoice(L.LanguageName(code)), () => { LanguagePacks.InstallVoice(tag); SettingsWindow.Open(); });
+        }
+    }
+
+    /// <summary>With no text being read, the player's status line shows an install or removal still running.</summary>
+    private void ShowInstallProgressIfIdle()
+    {
+        if (_ocr is not null)
+            return;
+        if (LanguagePacks.BackgroundStatus is { } status)
+        {
+            _showingBackgroundStatus = true;
+            _island?.SetSubtitle(status);
+        }
+        else if (_showingBackgroundStatus)
+        {
+            _showingBackgroundStatus = false;
+            _island?.ShowIdle();
+        }
+    }
+
+    /// <summary>An install finished: refreshes the amber button, or tells the user if the session was closed meanwhile.</summary>
+    private void OnLanguagePacksChanged()
+    {
+        bool finished = _languageInstallRunning && !LanguagePacks.IsBusy;
+        _languageInstallRunning = LanguagePacks.IsBusy;
+        ShowInstallProgressIfIdle();
+        if (!finished)
+            return;
+        if (_ocr is not null)
+            UpdateImproveAction(_ocr.LanguageCode);
+        if (LanguagePacks.RestartRecommended)
+            IslandToast.Show(L.RestartForVoice);
+        else if (!IsActive && LanguagePacks.LastResult is { Kind: LanguagePacks.StatusKind.Success } result)
+            IslandToast.Show(result.Text);
     }
 
     /// <summary>
@@ -327,7 +372,7 @@ internal sealed class SelectionSession
     /// <summary>Player title: the start of the text.</summary>
     private static string Title(OcrOutput ocr)
     {
-        string text = string.Join(' ', ocr.Words.Take(14).Select(w => w.Text));
+        string text = ReadAloud.BuildText(ocr.Words.Take(14).ToList(), out _);
         return text.Length > 60 ? text[..60].TrimEnd() + "…" : text;
     }
 
@@ -356,7 +401,10 @@ internal sealed class SelectionSession
         int from = _reader is { } r && r.IsPlaying ? Math.Max(0, r.CurrentWordIndex) : 0;
         bool otherLanguage = voice.Language != (_ocr.LanguageCode ?? "en");
         if (otherLanguage)
+        {
             _ocr = _ocr with { LanguageCode = voice.Language };
+            from = 0;
+        }
 
         _readingStarting = true; // avoids generating twice (here and in the settings-changed handler)
         AppSettings.Update(s =>
@@ -368,7 +416,83 @@ internal sealed class SelectionSession
                 s.AllowOnlineVoices = null;
         });
         LanguagePacks.EnsureInstalled(voice.Locale);
-        _ = StartReadingAsync(from);
+        if (otherLanguage)
+            _ = ReadInOtherLanguageAsync(voice);
+        else
+            _ = StartReadingAsync(from);
+    }
+
+    /// <summary>"Add language": remembers the language and reads the current selection in it.</summary>
+    private async Task AddLanguageAsync()
+    {
+        if (await AddLanguageWindow.AskAsync() is not { } code || VoiceCatalog.DefaultFor(code) is not { } voice)
+            return;
+        AppSettings.Update(s =>
+        {
+            if (!s.AddedLanguages.Contains(code))
+                s.AddedLanguages.Add(code);
+        });
+        LanguagePacks.AddLanguage(voice);
+        OnVoiceChosen(voice);
+    }
+
+    /// <summary>
+    /// Recognizes the selection again in the chosen language before reading it. Languages in another script
+    /// (Korean, Russian…) can't be read from a Latin OCR, so they wait for their OCR package to finish installing.
+    /// </summary>
+    private async Task ReadInOtherLanguageAsync(VoiceInfo voice)
+    {
+        int generation = _generation;
+        _tick.Stop();
+        _reader?.Pause();
+        try
+        {
+            if (!LanguagePacks.HasReadingLanguage(voice.Language) && VoiceCatalog.NeedsOwnOcr(voice.Language))
+            {
+                // Stops waiting as soon as the text recognition is ready; the voice package can finish on its own.
+                while (LanguagePacks.IsBusy && !LanguagePacks.HasReadingLanguage(voice.Language) && generation == _generation)
+                {
+                    if (LanguagePacks.Current is { } operation)
+                        _island?.ShowLoading(L.InstallInBackground, L.InstallingShort(operation.Name, operation.Percent));
+                    await Task.Delay(300);
+                }
+                if (generation != _generation)
+                    return;
+                if (!LanguagePacks.HasReadingLanguage(voice.Language))
+                {
+                    _readingStarting = false;
+                    _island?.ShowMessage(LanguagePacks.LastResult?.Text ?? L.InstallFailed);
+                    return;
+                }
+            }
+
+            UpdateImproveAction(voice.Language);
+            string? tag = LanguagePacks.OcrTagFor(voice.Language);
+            if (tag is not null && _selectionPixels is { } selection)
+            {
+                _island?.ShowLoading(L.OneMoment, L.Reading);
+                var text = await Task.Run(() => _recognizer.RecognizeInLanguageAsync(selection.Pixels, selection.Width, selection.Height, tag, voice.Language));
+                if (generation != _generation)
+                    return;
+                if (text.IsEmpty)
+                {
+                    _readingStarting = false;
+                    _island?.ShowMessage(L.NoText);
+                    return;
+                }
+                _ocr = text;
+            }
+            await StartReadingAsync(fromWordIndex: 0);
+        }
+        catch (Exception ex)
+        {
+            Log.Info("Reading in another language failed: " + ex.Message);
+            if (generation == _generation)
+            {
+                _readingStarting = false;
+                _island?.ShowMessage(L.VoiceFailed);
+            }
+        }
     }
 
     /// <summary>
@@ -549,6 +673,11 @@ internal sealed class SelectionSession
     /// <summary>Esc: if Settings is in front, closes only Settings; otherwise closes everything and stops reading.</summary>
     private void OnEscape()
     {
+        if (AddLanguageWindow.Current is { } addLanguage)
+        {
+            addLanguage.Close();
+            return;
+        }
         if (SettingsWindow.Current is { IsActive: true } settings)
         {
             settings.Close();
@@ -561,6 +690,7 @@ internal sealed class SelectionSession
     {
         UiWatchdog.Stop();
         PrivacyWindow.CloseCurrent();
+        AddLanguageWindow.CloseCurrent();
         if (_escape is { } escape)
         {
             // Gives Esc back to other apps, after its registration finishes and without blocking the UI.
@@ -576,6 +706,7 @@ internal sealed class SelectionSession
         _reader = null;
         _active = null;
         _ocr = null;
+        _selectionPixels = null;
         _readingStarting = false;
 
         foreach (var o in _overlays)
