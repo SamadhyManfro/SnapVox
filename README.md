@@ -50,6 +50,7 @@ Download from the [Releases](https://github.com/SamadhyManfro/SnapVox/releases) 
 - **Installer** (`SnapVox-Setup-x.y.z.exe`): no administrator rights needed, updates itself.
 - **Portable** (`SnapVox-Portable-x.y.z.exe`): nothing to install, just double-click it. It keeps its settings and
   voices in a `SnapVox Data` folder next to the exe, so it's best placed in its own folder or on a USB drive.
+  Its verified native libraries are unpacked to `%LOCALAPPDATA%\SnapVox\portable-runtime`.
 
 Then press **Win + Ctrl + R**.
 
@@ -63,6 +64,7 @@ that language's text recognition and Windows voice (Windows asks for permission)
 
 - The selected text is recognized **on your PC** (Windows OCR).
 - With the **Microsoft (Edge) voices**, the text is sent to Microsoft's speech service to generate the audio.
+  SnapVox asks before the first time, and you can turn them off in Settings.
   The **Piper** voices and the **Windows voice** run entirely on your PC.
 - SnapVox checks GitHub for new versions (you can turn this off in Settings).
 

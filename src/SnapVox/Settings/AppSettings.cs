@@ -27,6 +27,9 @@ public sealed class AppSettings
     /// <summary>Use the Windows voice when the others fail (e.g. offline).</summary>
     public bool WindowsVoiceFallback { get; set; } = true;
 
+    /// <summary>May the selected text be sent to Microsoft to generate the voice? Null = not asked yet.</summary>
+    public bool? AllowOnlineVoices { get; set; }
+
     /// <summary>Version the user answered "not now" to (we don't ask about it again).</summary>
     public string? SkippedUpdate { get; set; }
 

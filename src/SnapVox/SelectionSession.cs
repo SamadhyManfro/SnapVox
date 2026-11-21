@@ -132,6 +132,7 @@ internal sealed class SelectionSession
         {
             PlatformServices.BringToTop(_island);
             PlatformServices.BringToTop(SettingsWindow.Current);
+            PlatformServices.BringToTop(PrivacyWindow.Current);
         }, DispatcherPriority.Background);
     }
 
@@ -251,6 +252,25 @@ internal sealed class SelectionSession
         int generation = _generation;
         _readingStarting = true;
 
+        // First time a Microsoft voice would be used: nothing leaves the PC before the user answers.
+        if (AppSettings.Current.AllowOnlineVoices is null
+            && VoiceCatalog.ChosenFor(_ocr.LanguageCode ?? "en")?.Engine == VoiceEngine.Edge)
+        {
+            _island?.ShowLoading(L.OneMoment, Title(_ocr));
+            KeepIslandOnTop();
+            bool? answer = await PrivacyWindow.AskAsync();
+            if (answer is { } allow)
+                AppSettings.Update(s => s.AllowOnlineVoices = allow);
+            if (generation != _generation || _ocr is null || _cts is null)
+                return;
+            if (answer is null)
+            {
+                _readingStarting = false;
+                _island?.ShowIdle();
+                return;
+            }
+        }
+
         _tick.Stop();
         _reader?.Dispose();
         var reader = _reader = new ReadAloud();
@@ -343,6 +363,9 @@ internal sealed class SelectionSession
         {
             s.Voices[voice.Language] = voice.Id;
             s.LastVoiceLanguage = voice.Language;
+            // Picked a Microsoft voice after declining them: ask again instead of silently using another voice.
+            if (voice.Engine == VoiceEngine.Edge && s.AllowOnlineVoices == false)
+                s.AllowOnlineVoices = null;
         });
         LanguagePacks.EnsureInstalled(voice.Locale);
         _ = StartReadingAsync(from);
@@ -537,6 +560,7 @@ internal sealed class SelectionSession
     public void Close()
     {
         UiWatchdog.Stop();
+        PrivacyWindow.CloseCurrent();
         if (_escape is { } escape)
         {
             // Gives Esc back to other apps, after its registration finishes and without blocking the UI.

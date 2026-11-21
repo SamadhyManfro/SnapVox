@@ -11,7 +11,7 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <AssemblyName>SnapVox</AssemblyName>
     <RootNamespace>SnapVox</RootNamespace>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <!-- Project license (Piper uses espeak-ng, which is GPL). -->
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <!-- Lightweight: native AOT for the final release (needs the Visual Studio C++ build tools). -->
@@ -35,6 +35,11 @@
     <EventSourceSupport>false</EventSourceSupport>
     <UseSystemResourceKeys>false</UseSystemResourceKeys>
   </PropertyGroup>
+
+  <!-- Windows resolves the exe's own imports only from System32, never from the folder it runs in. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <LinkerArg Include="/DEPENDENTLOADFLAG:0x800" />
+  </ItemGroup>
 
   <!-- Portable build (build.ps1): the native libraries travel inside the exe. -->
   <PropertyGroup Condition="'$(PortablePayload)' != ''">

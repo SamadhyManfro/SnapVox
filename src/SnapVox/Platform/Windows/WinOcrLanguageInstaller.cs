@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO.Pipes;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -12,7 +13,7 @@ namespace SnapVox.Platform.Windows;
 /// Installs/removes the Windows packages of a reading language:
 /// "Language.OCR" (text recognition) and "Language.TextToSpeech" (system voice).
 /// Uses DISM elevated (Windows shows the permission/UAC prompt). Since an elevated process can't
-/// send its output straight to ours, each DISM step writes to a temp file and
+/// send its output straight to ours, each DISM step writes to a private named pipe and
 /// we read its percentage while it runs.
 /// </summary>
 [SupportedOSPlatform("windows10.0.19041.0")]
@@ -48,15 +49,21 @@ internal sealed partial class WinOcrLanguageInstaller : IOcrLanguageInstaller
             return InstallResult.Failed;
 
         string dism = Path.Combine(Environment.SystemDirectory, "dism.exe");
-        var logs = steps.Select(_ => Path.Combine(Path.GetTempPath(), $"snapvox-lang-{Guid.NewGuid():N}.log")).ToArray();
+
+        // DISM's output comes back through private pipes. Nothing in this elevated command comes from
+        // the environment (like TEMP) or from user text: only the system folder, the fixed list above and GUIDs.
+        var pipeNames = steps.Select(_ => $"snapvox-lang-{Guid.NewGuid():N}").ToArray();
+        var pipes = pipeNames.Select(n => new NamedPipeServerStream(n, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous)).ToArray();
+        var percents = new int[steps.Length];
+        using var stopReading = new CancellationTokenSource();
+        var readers = pipes.Select((p, i) => ReadProgressAsync(p, percents, i, stopReading.Token)).ToArray();
 
         // Builds "step1 && step2 …". Optional steps never break the sequence.
-        // The tag comes from the fixed list above, so there is no user text in the command.
         var cmd = new StringBuilder();
         for (int i = 0; i < steps.Length; i++)
         {
             var (verb, capability, required) = steps[i];
-            string run = $"\"{dism}\" /Online /{verb}-Capability /CapabilityName:{capability} /NoRestart > \"{logs[i]}\" 2>&1";
+            string run = $"\"{dism}\" /Online /{verb}-Capability /CapabilityName:{capability} /NoRestart > \"\\\\.\\pipe\\{pipeNames[i]}\" 2>&1";
             if (i > 0)
                 cmd.Append(" && ");
             cmd.Append(required ? $"({run})" : $"({run} & ver > nul)"); // "ver" resets the error code
@@ -65,7 +72,8 @@ internal sealed partial class WinOcrLanguageInstaller : IOcrLanguageInstaller
         var info = new ProcessStartInfo
         {
             FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
-            Arguments = $"/c \"{cmd}\"",
+            Arguments = $"/d /c \"{cmd}\"", // /d: ignores any AutoRun command set in the registry
+            WorkingDirectory = Environment.SystemDirectory,
             Verb = "runas", // asks for administrator permission
             UseShellExecute = true,
             WindowStyle = ProcessWindowStyle.Hidden,
@@ -83,7 +91,7 @@ internal sealed partial class WinOcrLanguageInstaller : IOcrLanguageInstaller
             {
                 await Task.Delay(400).ConfigureAwait(false);
                 // Each step is worth an equal share of the bar.
-                double total = logs.Select(l => (ReadPercent(l) ?? 0) / 100.0).Sum() / logs.Length * 100;
+                double total = percents.Sum() / (double)percents.Length;
                 int pct = (int)Math.Min(99, total);
                 if (pct != last)
                 {
@@ -111,26 +119,38 @@ internal sealed partial class WinOcrLanguageInstaller : IOcrLanguageInstaller
         }
         finally
         {
-            foreach (var l in logs)
-                try { File.Delete(l); } catch { /* temp file; doesn't matter */ }
+            stopReading.Cancel();
+            await Task.WhenAll(readers).ConfigureAwait(false);
+            foreach (var pipe in pipes)
+                pipe.Dispose();
+        }
+    }
+
+    /// <summary>Follows one DISM step's output and keeps its highest percentage.</summary>
+    private static async Task ReadProgressAsync(NamedPipeServerStream pipe, int[] percents, int index, CancellationToken ct)
+    {
+        try
+        {
+            await pipe.WaitForConnectionAsync(ct).ConfigureAwait(false);
+            var buffer = new byte[4096];
+            string tail = "";
+            int read;
+            while ((read = await pipe.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
+            {
+                tail += Encoding.ASCII.GetString(buffer, 0, read);
+                if (LastPercent(tail) is { } pct && pct > Volatile.Read(ref percents[index]))
+                    Volatile.Write(ref percents[index], pct);
+                if (tail.Length > 64)
+                    tail = tail[^64..];
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException)
+        {
+            // the step ended or never started
         }
     }
 
     /// <summary>Last percentage written by DISM (e.g. "[====  50.0%   ]"), or null if none yet.</summary>
-    internal static int? ReadPercent(string logFile)
-    {
-        try
-        {
-            using var stream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            using var reader = new StreamReader(stream);
-            return LastPercent(reader.ReadToEnd());
-        }
-        catch (IOException)
-        {
-            return null; // the file doesn't exist yet
-        }
-    }
-
     internal static int? LastPercent(string text)
     {
         var matches = PercentRegex().Matches(text);

@@ -39,6 +39,13 @@ internal static class L
     public static string Downloads => "Downloads";
     public static string StartWithWindows => Pt ? "Iniciar com o Windows" : "Start with Windows";
     public static string OfflineVoice => Pt ? "Voz do Windows sem internet" : "Windows voice when offline";
+    public static string OnlineVoices => Pt ? "Vozes online da Microsoft" : "Microsoft online voices";
+    public static string PrivacyTitle => Pt ? "Usar as vozes da Microsoft?" : "Use Microsoft voices?";
+    public static string PrivacyBody => Pt
+        ? "Para gerar a voz, o texto selecionado é enviado à Microsoft. Evite ler senhas ou dados sensíveis. As vozes offline ficam no seu PC (baixam cerca de 64 MB uma vez). Você pode mudar isso nas configurações."
+        : "To generate the voice, the selected text is sent to Microsoft. Avoid reading passwords or sensitive data. Offline voices stay on your PC (a one-time download of about 64 MB). You can change this in Settings.";
+    public static string PrivacyOffline => Pt ? "Só vozes offline" : "Offline voices only";
+    public static string PrivacyAccept => Pt ? "Usar Microsoft" : "Use Microsoft";
     public static string AutoUpdate => Pt ? "Atualização automática" : "Automatic updates";
     public static string InterfaceLanguage => Pt ? "Idioma da interface" : "Interface language";
     public static string SystemLanguage => Pt ? "Idioma do sistema" : "System language";

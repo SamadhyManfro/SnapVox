@@ -11,7 +11,7 @@ namespace SnapVox.UI;
 
 /// <summary>
 /// Transparent window covering one monitor: dims the screen, lets you drag a rectangular selection and,
-/// once released, shows the "frozen photo" of the selection (80% opaque) with an animated dashed border.
+/// once released, shows the "frozen photo" of the selection (92% opaque) with an animated dashed border.
 /// There is one per monitor (each monitor may have a different scale/DPI).
 /// The mouse wheel goes through to the page underneath, so you can scroll while it reads.
 /// </summary>
@@ -146,7 +146,7 @@ internal sealed class SelectionOverlay : Window
         private static readonly IBrush Dim = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)); // ~55%
         private static readonly IBrush Accent = new SolidColorBrush(Color.Parse("#4DA3FF"));
         private const double Radius = 8;
-        private const double SnapshotOpacity = 0.8;
+        private const double SnapshotOpacity = 0.92;
 
         private readonly DispatcherTimer _timer;
         private Point? _start;

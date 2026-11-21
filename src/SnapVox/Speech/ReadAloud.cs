@@ -85,7 +85,7 @@ internal sealed class ReadAloud : IDisposable
         var piper = chosen?.Engine == VoiceEngine.Piper ? chosen : VoiceCatalog.PiperFallbackFor(lang);
 
         var attempts = new List<(string Label, Func<Task<SpeechAudio>> Run, VoiceInfo? Voice)>();
-        if (chosen?.Engine == VoiceEngine.Edge)
+        if (chosen?.Engine == VoiceEngine.Edge && Settings.AppSettings.Current.AllowOnlineVoices == true)
             attempts.Add(("Edge", () => Edge.SynthesizeAsync(text, lang, chosen.Id, ct), chosen));
         if (piper is not null)
             attempts.Add(("Piper", () =>

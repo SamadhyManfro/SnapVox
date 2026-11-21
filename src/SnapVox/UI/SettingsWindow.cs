@@ -132,6 +132,7 @@ internal sealed class SettingsWindow : Window
         content.Children.Add(Separator());
         content.Children.Add(Row(L.StartWithWindows, StartupToggle(), soon: false));
         content.Children.Add(Row(L.OfflineVoice, SettingToggle(() => AppSettings.Current.WindowsVoiceFallback, v => AppSettings.Update(s => s.WindowsVoiceFallback = v)), soon: false));
+        content.Children.Add(Row(L.OnlineVoices, SettingToggle(() => AppSettings.Current.AllowOnlineVoices == true, v => AppSettings.Update(s => s.AllowOnlineVoices = v)), soon: false));
         content.Children.Add(Row(L.AutoUpdate, AutoUpdateControls(), soon: false));
         content.Children.Add(_updateStatus);
         content.Children.Add(Separator());
