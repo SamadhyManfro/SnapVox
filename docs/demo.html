@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SnapVox demo</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root{--page:#f3f3f1;--surface:#fff;--text:#1a1a1a;--muted:#5f5f5f;--hint:#8a8a8a;--border:rgba(0,0,0,.12);--strong:rgba(0,0,0,.2)}
+@media (prefers-color-scheme: dark){:root{--page:#141416;--surface:#1d1d20;--text:#ececec;--muted:#a8a8a8;--hint:#7a7a7a;--border:rgba(255,255,255,.12);--strong:rgba(255,255,255,.22)}}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 40px;background:var(--page);font-family:"Segoe UI",system-ui,sans-serif;color:var(--text)}
+.wrap{max-width:760px;margin:0 auto}
+header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+header h1{font-size:22px;font-weight:600;margin:0}
+.lead{color:var(--muted);margin:4px 0 18px;font-size:15px;line-height:1.5}
+#scr{position:relative;height:500px;border-radius:14px;border:1px solid var(--border);background:var(--surface);overflow:clip;font-size:14px;line-height:1.9;outline:none}
+#page{padding:190px 120px 0;transition:transform 1.1s cubic-bezier(.4,0,.2,1)}
+#page p{margin:0 0 12px}
+.dimtext{color:var(--muted)}
+#fr{position:absolute;border-radius:8px;box-shadow:0 0 0 2000px rgba(0,0,0,.55);pointer-events:none;opacity:0;transition:opacity .25s}
+#fr svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#ants{fill:none;stroke:#4DA3FF;stroke-width:2;stroke-dasharray:6 5;animation:ants .9s linear infinite}
+@keyframes ants{to{stroke-dashoffset:-22}}
+#bgz{position:absolute;inset:0;border-radius:8px;background:color-mix(in srgb,var(--surface) 80%,transparent);opacity:0;transition:opacity .3s}
+#snapin{position:absolute;opacity:0;transition:opacity .3s}
+#fl{position:absolute;inset:0;border-radius:8px;background:#fff;opacity:0}
+@keyframes fl{0%{opacity:.2}100%{opacity:0}}
+#hl{position:absolute;background:rgba(77,163,255,.32);border-radius:5px;transition:all .18s cubic-bezier(.34,1.3,.64,1);opacity:0}
+.blk{background:#0b0b0d;color:#fff;border:.5px solid rgba(255,255,255,.07);box-shadow:0 12px 34px rgba(0,0,0,.35)}
+.isl{position:absolute;overflow:clip;z-index:5;opacity:0;transform:scale(.6);border-radius:34px;
+ transition:left .6s cubic-bezier(.34,1.3,.64,1),top .6s cubic-bezier(.34,1.3,.64,1),width .6s cubic-bezier(.34,1.3,.64,1),height .6s cubic-bezier(.34,1.3,.64,1),transform .55s cubic-bezier(.34,1.56,.64,1),opacity .3s}
+.isl.in{opacity:1;transform:scale(1)}
+.lay{position:absolute;inset:0}
+.amb{position:absolute;inset:0;pointer-events:none;opacity:.55;background:radial-gradient(120px 90px at 12% 22%,rgba(47,127,216,.55),transparent 70%),radial-gradient(160px 70px at 92% 105%,rgba(77,163,255,.32),transparent 70%)}
+.amb.v{background:radial-gradient(90px 110px at 50% 6%,rgba(47,127,216,.6),transparent 70%),radial-gradient(90px 140px at 50% 104%,rgba(77,163,255,.32),transparent 70%)}
+.isl.live .amb{animation:breathe 2.6s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.6}50%{opacity:1}}
+.cnt{position:relative}
+.ib{width:30px;height:30px;padding:0;border:none;border-radius:15px;background:transparent;color:rgba(255,255,255,.85);display:inline-flex;align-items:center;justify-content:center;transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s,opacity .3s;font-size:17px;flex:none;cursor:pointer}
+.ib:hover{background:rgba(255,255,255,.1)}.ib:active{transform:scale(.84)}
+.big{width:44px;height:44px;border-radius:22px;background:rgba(77,163,255,.2);color:#6CB4FF;font-size:22px;position:relative}
+.off{opacity:.35;pointer-events:none}
+.spin{position:absolute;inset:11px;border-radius:50%;border:2.5px solid #6CB4FF;border-right-color:transparent;animation:spin .8s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading .spin{display:block}.loading .ppi{display:none}
+.chip{height:26px;border:none;border-radius:13px;padding:0 9px;font-size:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);display:inline-flex;align-items:center;justify-content:center;gap:3px;flex:none;cursor:pointer;transition:opacity .3s}
+.chip:hover{background:rgba(255,255,255,.16)}
+.eq{display:flex;align-items:flex-end;justify-content:center;gap:2px;width:20px;height:16px;flex:none}
+.eq i{display:block;width:3px;border-radius:2px;background:#4DA3FF;height:16px;transform-origin:bottom;transform:scaleY(.2);transition:transform .15s}
+.trk{position:relative;flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.18);overflow:visible}
+.trk b{position:absolute;left:0;top:0;height:4px;border-radius:2px;background:#4DA3FF;transition:width .2s}
+.trk u{position:absolute;top:-3px;width:10px;height:10px;border-radius:5px;background:#fff;margin-left:-5px;transition:left .2s}
+.trk s{position:absolute;top:0;height:4px;width:28%;border-radius:2px;background:#4DA3FF;display:none;animation:run 1.6s ease-in-out infinite alternate}
+@keyframes run{from{left:0}to{left:72%}}
+.loading .trk s{display:block}.loading .trk b,.loading .trk u{display:none}
+.mu{color:rgba(255,255,255,.55)}
+.amber{font-size:11px;color:#FFB454;background:rgba(255,180,84,.15);border:none;border-radius:11px;padding:2px 8px;cursor:pointer;display:none}
+.pop{position:absolute;min-width:190px;padding:6px;border-radius:16px;background:rgba(22,22,24,.96);backdrop-filter:blur(24px);border:.5px solid rgba(255,255,255,.1);box-shadow:0 14px 36px rgba(0,0,0,.4);color:#fff;font-size:13px;transform:scale(.9);opacity:0;pointer-events:none;visibility:hidden;transition:opacity .2s,transform .32s cubic-bezier(.34,1.56,.64,1),visibility 0s .32s;z-index:9}
+.pop.open{opacity:1;transform:none;pointer-events:auto;visibility:visible;transition:opacity .2s,transform .32s cubic-bezier(.34,1.56,.64,1)}
+.it{padding:7px 10px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:14px;cursor:pointer}
+.it:hover{background:#2F7FD8}
+.pop small{display:block;font-size:11px;color:rgba(255,255,255,.5);padding:5px 10px 3px}
+.pop hr{border:none;height:.5px;background:rgba(255,255,255,.12);margin:4px 6px}
+.seg{display:flex;background:rgba(255,255,255,.08);border-radius:10px;padding:2px;margin:2px 4px 4px}
+.seg span{flex:1;text-align:center;font-size:12px;padding:5px 8px;border-radius:8px;cursor:pointer}
+.seg span.on{background:rgba(255,255,255,.18)}
+#cap{font-size:13px;color:var(--muted);margin:12px 0 0;min-height:20px}
+.keys{font-size:12px;color:var(--hint);margin:4px 0 12px}
+kbd{font-family:Consolas,monospace;font-size:11px;border:1px solid var(--strong);border-radius:4px;padding:0 5px}
+button.again{font:inherit;font-size:13px;padding:7px 14px;border-radius:9px;border:1px solid var(--strong);background:var(--surface);color:var(--text);cursor:pointer}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:26px}
+.f{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.f b{display:block;margin-bottom:4px}
+.f span{color:var(--muted);font-size:13px;line-height:1.5}
+@media (max-width:640px){#page{padding:190px 24px 0}}
+</style>
+</head>
+<body><div class="wrap">
+<header><span class="logo" data-s="44"></span><h1>SnapVox</h1></header>
+<p class="lead">Select any text on your screen and listen to it in a natural voice. Press <kbd>Win</kbd> + <kbd>Ctrl</kbd> + <kbd>R</kbd>, drag over the text, and SnapVox reads it aloud, highlighting each word as it speaks. This is an interactive demo of how it works.</p>
+
+<div id="scr" tabindex="0">
+  <div id="page">
+    <div style="font-size:16px;font-weight:600;margin-bottom:6px">Technology news</div>
+    <p id="para"></p>
+    <p class="dimtext">Experts say accessibility features are becoming part of everyday life, helping people consume content in different ways.</p>
+    <p class="dimtext">Comments (24) · Share · Save for later</p>
+  </div>
+  <div id="fr"><div id="bgz"></div><div id="snapin"></div><div id="hl"></div><div id="fl"></div><svg><rect id="ants" x="0" y="0" rx="8" ry="8"/></svg></div>
+  <div class="isl blk" id="isl">
+    <div class="lay" id="layH" style="width:410px;height:150px">
+      <div class="amb"></div>
+      <div class="cnt" style="padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="logo" data-s="46"></span>
+          <div style="flex:1;min-width:0;line-height:1.35">
+            <div class="js-title" style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+            <div class="js-sub mu" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+          </div>
+          <button class="amber js-amber">Improve reading</button>
+          <div class="eq js-eq"></div>
+          <button class="ib js-new" title="Select another text"><i class="ti ti-crop"></i></button>
+          <button class="ib js-more" title="More"><i class="ti ti-dots-vertical"></i></button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:11px;font-variant-numeric:tabular-nums" class="mu">
+          <span class="js-tA" style="width:28px">0:00</span><div class="trk js-trk"><b class="js-tB"></b><u class="js-tK"></u><s></s></div><span class="js-tT" style="width:28px;text-align:right">0:00</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+          <button class="chip js-spd" style="width:62px"><span class="js-spdL">1x</span><i class="ti ti-chevron-down"></i></button>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="ib js-prev js-need" title="Previous word"><i class="ti ti-player-skip-back"></i></button>
+            <button class="ib big js-pp" title="Play / pause"><i class="ti ti-player-play ppi js-ppi"></i><span class="spin"></span></button>
+            <button class="ib js-next js-need" title="Next word"><i class="ti ti-player-skip-forward"></i></button>
+          </div>
+          <button class="chip js-voz js-need" style="width:62px"><i class="ti ti-microphone"></i><i class="ti ti-chevron-down"></i></button>
+        </div>
+      </div>
+    </div>
+    <div class="lay" id="layV" style="width:88px;height:420px;display:none">
+      <div class="amb v"></div>
+      <div class="cnt" style="position:absolute;inset:0;padding:16px 0;display:flex;flex-direction:column;align-items:center">
+        <span class="logo" data-s="46"></span>
+        <div class="eq js-eq" style="margin:12px 0 10px"></div>
+        <div style="width:60px"><div class="trk js-trk"><b class="js-tB"></b><u class="js-tK"></u><s></s></div></div>
+        <div class="mu" style="font-size:11px;margin-top:5px;height:16px;line-height:16px"><span class="js-tA">0:00</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin:12px 0">
+          <button class="ib js-prev js-need"><i class="ti ti-player-skip-back"></i></button>
+          <button class="ib big js-pp"><i class="ti ti-player-play ppi js-ppi"></i><span class="spin"></span></button>
+          <button class="ib js-next js-need"><i class="ti ti-player-skip-forward"></i></button>
+        </div>
+        <button class="chip js-spd" style="width:58px"><span class="js-spdL">1x</span></button>
+        <button class="chip js-voz js-need" style="width:58px;margin-top:6px"><i class="ti ti-microphone"></i></button>
+        <div style="flex:1"></div>
+        <button class="ib js-new"><i class="ti ti-crop"></i></button>
+        <button class="ib js-more"><i class="ti ti-dots"></i></button>
+      </div>
+    </div>
+  </div>
+  <div class="pop" id="pop"></div>
+</div>
+<p id="cap"></p>
+<p class="keys">Drag over the text again to read something else · scroll with the mouse wheel · <kbd>Space</kbd> pause · <kbd>←</kbd><kbd>→</kbd> word · <kbd>↑</kbd><kbd>↓</kbd> speed · <kbd>Esc</kbd> close</p>
+<button class="again" id="again"><i class="ti ti-refresh"></i> Play the demo again</button>
+
+<div class="features">
+  <div class="f"><b>Works on anything on screen</b><span>Websites, PDFs, images, videos and games. The text is recognized from the image, on your PC.</span></div>
+  <div class="f"><b>Natural voices</b><span>Microsoft neural voices by default, with Piper (offline) and the Windows voice as automatic backups.</span></div>
+  <div class="f"><b>Detects the language</b><span>Picks the right voice automatically. Choosing a voice also installs that language for better recognition.</span></div>
+  <div class="f"><b>Save as MP3</b><span>Keep what was read, in Downloads or anywhere you choose.</span></div>
+</div>
+</div>
+<script>
+const $=id=>document.getElementById(id),Q=c=>[...document.querySelectorAll(c)];
+const LOGO=s=>`<svg width="${s}" height="${s}" viewBox="0 0 46 46" style="display:block;flex:none"><rect width="46" height="46" rx="13" fill="#0B0B0D"/><rect x="10" y="13" width="26" height="3" rx="1.5" fill="rgba(255,255,255,.4)"/><rect x="10" y="21.5" width="9" height="3" rx="1.5" fill="rgba(255,255,255,.4)"/><rect x="21" y="19" width="15" height="8" rx="2.5" fill="#4DA3FF"/><rect x="10" y="30" width="19" height="3" rx="1.5" fill="rgba(255,255,255,.4)"/></svg>`;
+Q(".logo").forEach(e=>e.innerHTML=LOGO(+e.dataset.s));
+const txt="The new system update brings performance improvements and accessibility features. Now you can listen to any text on the screen with a natural voice, without opening another program. Early tests show smoother and less tiring reading.";
+const W0=txt.split(" ");$("para").innerHTML=W0.map(w=>`<span>${w}</span>`).join(" ");
+const scr=$("scr"),isl=$("isl"),fr=$("fr"),ants=$("ants"),hl=$("hl"),cap=$("cap"),page=$("page"),pop=$("pop");
+Q(".js-eq").forEach(q=>{for(let k=0;k<4;k++)q.appendChild(document.createElement("i"))});
+const speeds=[0.5,0.75,1,1.25,1.5,1.75,2];
+const voices=[["Aria · Microsoft","default"],["Ava · Microsoft",""],["Andrew · Microsoft",""],["Lessac",""],["Amy",""],["Ryan",""]];
+let spd=1,voice="Aria · Microsoft",pos="top",popFor=null,words=[],idx=0,tm=null,et=null,T=[],raf=null,scrolled=false,state="idle";
+const later=(f,ms)=>T.push(setTimeout(f,ms));
+function R(el,ref){const a=el.getBoundingClientRect(),b=(ref||scr).getBoundingClientRect();return{x:a.left-b.left,y:a.top-b.top,w:a.width,h:a.height}}
+const set=(c,t)=>Q(c).forEach(e=>e.textContent=t);
+function setState(s,title,sub){state=s;if(title!=null)set(".js-title",title);if(sub!=null)set(".js-sub",sub);
+ const ready=s==="play"||s==="pause"||s==="done";Q(".js-need").forEach(b=>b.classList.toggle("off",!ready));
+ Q(".js-pp").forEach(b=>{b.classList.toggle("loading",s==="loading");b.classList.toggle("off",!(ready||s==="loading"))});
+ Q(".js-trk").forEach(t=>t.parentElement.classList.toggle("loading",s==="loading"));
+ Q(".js-trk").forEach(t=>t.classList.toggle("loading",s==="loading"));
+ document.querySelectorAll(".trk").forEach(t=>{t.querySelector("s").style.display=s==="loading"?"block":"none";t.querySelector("b").style.display=s==="loading"?"none":"";t.querySelector("u").style.display=s==="loading"?"none":""});
+ isl.classList.toggle("live",s==="play"||s==="loading");ppIcon(s==="play"?"ti-player-pause":s==="done"?"ti-reload":"ti-player-play");eq(s==="play")}
+function layout(){const v=pos!=="top",SW=scr.clientWidth,SH=scr.clientHeight,w=v?88:410,h=v?420:150;
+ $("layH").style.display=v?"none":"";$("layV").style.display=v?"":"none";
+ Object.assign(isl.style,{width:w+"px",height:h+"px",left:(pos==="top"?(SW-w)/2:pos==="left"?14:SW-14-w)+"px",top:(pos==="top"?14:(SH-h)/2)+"px",transformOrigin:pos==="top"?"top center":pos==="left"?"left center":"right center"})}
+function setPos(p){closePop();pos=p;isl.classList.remove("in");setTimeout(()=>{layout();isl.classList.add("in")},250);cap.textContent="Island on the "+({top:"top (horizontal)",left:"left (vertical)",right:"right (vertical)"})[p]+", always centered."}
+function closePop(){pop.classList.remove("open");popFor=null}
+function openPop(btn,html,onPick){if(popFor===btn){closePop();return}popFor=btn;pop.innerHTML=html;pop.onclick=e=>{e.stopPropagation();onPick(e)};
+ const r=R(btn),bi=R(isl),pw=pop.offsetWidth,ph=pop.offsetHeight;let l,t;
+ if(pos==="top"){l=Math.max(8,Math.min(scr.clientWidth-pw-8,r.x+r.w/2-pw/2));t=bi.y+bi.h+8}
+ else if(pos==="left"){l=bi.x+bi.w+8;t=Math.max(8,Math.min(scr.clientHeight-ph-8,r.y+r.h/2-ph/2))}
+ else{l=bi.x-pw-8;t=Math.max(8,Math.min(scr.clientHeight-ph-8,r.y+r.h/2-ph/2))}
+ Object.assign(pop.style,{left:l+"px",top:t+"px"});requestAnimationFrame(()=>pop.classList.add("open"))}
+const chk=c=>c?'<i class="ti ti-check"></i>':'';
+const on=(c,f)=>Q(c).forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();f(e.currentTarget)}));
+on(".js-spd",b=>openPop(b,'<small>Speed</small>'+speeds.map(s=>`<div class="it" data-s="${s}"><span>${s}x</span>${chk(s==spd)}</div>`).join(""),ev=>{const d=ev.target.closest("[data-s]");if(d){setSpd(+d.dataset.s);closePop()}}));
+on(".js-voz",b=>openPop(b,'<small>English</small>'+voices.map(([v,t])=>`<div class="it" data-v="${v}"><span>${v}</span><span style="font-size:11px;opacity:.6">${t} ${v==voice?"✓":""}</span></div>`).join("")+'<hr><div class="it"><span>Read in another language</span><i class="ti ti-chevron-right"></i></div>',ev=>{const d=ev.target.closest("[data-v]");if(d){voice=d.dataset.v;closePop();set(".js-sub",voice+" · English");cap.textContent="Voice changed to "+voice+": it keeps reading from the current word."}}));
+on(".js-more",b=>openPop(b,'<div class="it" data-a="s"><span><i class="ti ti-download"></i> Save MP3</span><span style="font-size:11px;opacity:.5">Downloads</span></div><div class="it" data-a="as"><span><i class="ti ti-folder"></i> Save as…</span></div><hr><small>Island position</small><div class="seg">'+[["top","Top"],["left","Left"],["right","Right"]].map(([k,l])=>`<span data-p="${k}" class="${k==pos?"on":""}">${l}</span>`).join("")+'</div><hr><div class="it" data-a="cfg"><span><i class="ti ti-settings"></i> Settings</span></div><div class="it" data-a="sug"><span><i class="ti ti-message"></i> Send a suggestion</span></div><div class="it" data-a="x"><span><i class="ti ti-x"></i> Close</span><span style="font-size:11px;opacity:.5">Esc</span></div>',ev=>{const p=ev.target.closest("[data-p]");if(p){setPos(p.dataset.p);return}const d=ev.target.closest("[data-a]");if(!d)return;closePop();const a=d.dataset.a;
+ if(a==="x")closeAll();else cap.textContent=({s:"MP3 saved to Downloads.",as:"Opens the Windows dialog to pick a folder and a name.",cfg:"Opens Settings: voice per language, island position, default speed, MP3 folder, start with Windows, updates.",sug:"Opens a new suggestion on GitHub."})[a]}));
+on(".js-new",()=>reset(true));on(".js-pp",()=>pause());on(".js-prev",()=>jump(-1));on(".js-next",()=>jump(1));
+scr.addEventListener("click",closePop);
+const fmt=s=>{s=Math.round(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+function prog(){const tot=W0.length*.34/spd,cur=idx*.34/spd,p=Math.min(100,idx/W0.length*100);set(".js-tA",fmt(cur));set(".js-tT",fmt(tot));Q(".js-tB").forEach(e=>e.style.width=p+"%");Q(".js-tK").forEach(e=>e.style.left=p+"%")}
+function setSpd(s){spd=s;set(".js-spdL",s+"x");prog();cap.textContent="Speed "+s+"x, applied instantly."}
+function ppIcon(c){Q(".js-ppi").forEach(e=>e.className="ti "+c+" ppi js-ppi")}
+function eq(v){clearInterval(et);Q(".js-eq i").forEach(b=>b.style.transform="scaleY(.2)");if(v)et=setInterval(()=>Q(".js-eq i").forEach(b=>b.style.transform="scaleY("+(.2+Math.random()*.8).toFixed(2)+")"),140)}
+function hlTo(i){const r=R(words[i],fr);hl.style.opacity=1;Object.assign(hl.style,{left:(r.x-3)+"px",top:(r.y+2)+"px",width:(r.w+6)+"px",height:(r.h-4)+"px"})}
+function step(){if(state!=="play")return;if(idx>=words.length){done();return}hlTo(idx);idx++;prog();
+ if(idx===16&&!scrolled){scrolled=true;page.style.transform="translateY(-50px)";cap.textContent="You can scroll the page with the mouse wheel while it reads: it shows through, and the reading continues on the frozen snapshot."}
+ tm=setTimeout(step,340/spd)}
+function play(){setState("play");step()}
+function pause(){if(state==="play"){clearTimeout(tm);setState("pause");cap.textContent="Paused."}else if(state==="pause"){play();cap.textContent="Playing."}else if(state==="done"){idx=0;play();cap.textContent="Playing again."}}
+function jump(d){if(!words.length||!(state==="play"||state==="pause"||state==="done"))return;clearTimeout(tm);let n=Math.max(0,Math.min(words.length-1,Math.max(0,idx-1)+d));if(state==="done")setState("pause");hlTo(n);idx=n+1;prog();cap.textContent=(d<0?"Back":"Forward")+" one word: “"+W0[n]+"”";if(state==="play")tm=setTimeout(step,340/spd)}
+function done(){clearTimeout(tm);hl.style.opacity=0;setState("done",null,voice+" · English");cap.textContent="Finished. Drag over the text again to read something else, or press Esc to close."}
+function closeAll(){T.forEach(clearTimeout);clearTimeout(tm);cancelAnimationFrame(raf);eq(false);closePop();isl.classList.remove("in");fr.style.opacity=0;state="idle";cap.textContent="Closed. SnapVox goes back to the tray, ready for Win + Ctrl + R."}
+scr.addEventListener("keydown",e=>{if(e.key===" "){e.preventDefault();pause()}else if(e.key==="Escape")closeAll();else if(e.key==="ArrowLeft"){e.preventDefault();jump(-1)}else if(e.key==="ArrowRight"){e.preventDefault();jump(1)}else if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();let i=speeds.indexOf(spd)+(e.key==="ArrowUp"?1:-1);setSpd(speeds[Math.max(0,Math.min(speeds.length-1,i))])}});
+function setFrame(x,y,w,h){Object.assign(fr.style,{left:x+"px",top:y+"px",width:w+"px",height:h+"px"});ants.setAttribute("width",Math.max(0,w));ants.setAttribute("height",Math.max(0,h))}
+function reset(fromIsland){T.forEach(clearTimeout);T=[];clearTimeout(tm);cancelAnimationFrame(raf);closePop();idx=0;words=[];
+ hl.style.opacity=0;$("bgz").style.opacity=0;$("snapin").style.opacity=0;ants.style.opacity=0;setFrame(0,0,0,0);
+ setState("idle","Select the text","Drag over the text on the screen");prog();
+ if(fromIsland){cap.textContent="New selection: the reading stops and you can drag again.";later(drag,700)}}
+function drag(){const sp=[...$("para").querySelectorAll("span")],a=R(sp[0]),b=R(sp[sp.length-1]);
+ const x=a.x-10,y=a.y-8,W=$("para").clientWidth+20,H=b.y+b.h-y+8;
+ cap.textContent="Dragging over the text.";ants.style.opacity=1;const t0=performance.now();
+ const anim=t=>{let k=Math.min(1,(t-t0)/900);k=1-Math.pow(1-k,3);setFrame(x,y,W*k,H*k);if(k<1)raf=requestAnimationFrame(anim)};raf=requestAnimationFrame(anim);
+ later(()=>{const c=$("para").cloneNode(true);c.removeAttribute("id");c.style.margin=0;c.style.width=$("para").clientWidth+"px";
+  const si=$("snapin");si.innerHTML="";si.appendChild(c);si.style.left="10px";si.style.top=(a.y-y-((parseFloat(getComputedStyle(c).lineHeight)-a.h)/2))+"px";
+  $("bgz").style.opacity=1;si.style.opacity=1;const f=$("fl");f.style.animation="none";void f.offsetWidth;f.style.animation="fl .3s ease-out";
+  words=[...c.querySelectorAll("span")];setState("loading","Recognizing text…","Just a moment");cap.textContent="Snap: the selection freezes and the rest of the screen stays dimmed. The player shows it is working."},1250);
+ later(()=>{setState("loading","The new system update brings performance…","Generating voice · "+voice)},2300);
+ later(()=>{setState("play",null,voice+" · English");step();cap.textContent="Reading, with each word highlighted as it is spoken."},3600)}
+function run(){T.forEach(clearTimeout);T=[];page.style.transition="none";page.style.transform="none";void page.offsetWidth;page.style.transition="";scrolled=false;
+ fr.style.opacity=1;layout();reset(false);isl.classList.remove("in");later(()=>isl.classList.add("in"),120);
+ cap.textContent="Win + Ctrl + R: the screen dims and the player appears, waiting for a selection.";later(drag,1300)}
+$("again").onclick=run;
+// Starts only once the page has a real size (e.g. opened in a background tab), and re-centers on resize.
+function whenSized(f){if(scr.clientWidth>0&&$("para").clientWidth>0)f();else setTimeout(()=>whenSized(f),150)}
+window.addEventListener("resize",()=>{if(isl.classList.contains("in"))layout()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state==="idle"&&!isl.classList.contains("in"))whenSized(run)});
+whenSized(()=>setTimeout(run,300));
+</script>
+</body>
+</html>

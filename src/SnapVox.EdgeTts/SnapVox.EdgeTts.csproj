@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A separate library on purpose: part of this code is translated from the edge-tts project
+    (https://github.com/rany2/edge-tts), licensed under LGPL-3.0. Keeping it in its own DLL,
+    under the same license, keeps the license of the rest of SnapVox independent.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <RootNamespace>SnapVox.EdgeTts</RootNamespace>
+    <PackageLicenseExpression>LGPL-3.0-only</PackageLicenseExpression>
+  </PropertyGroup>
+
+</Project>

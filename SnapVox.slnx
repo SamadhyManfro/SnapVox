@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SnapVox.EdgeTts/SnapVox.EdgeTts.csproj" />
+    <Project Path="src/SnapVox/SnapVox.csproj" />
+  </Folder>
+</Solution>

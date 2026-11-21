@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Windows 10 2004+ to use the native OCR (Windows.Media.Ocr). Linux/Mac will get another target later. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AssemblyName>SnapVox</AssemblyName>
+    <RootNamespace>SnapVox</RootNamespace>
+    <Version>0.1.0</Version>
+    <!-- Project license (Piper uses espeak-ng, which is GPL). -->
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <!-- Lightweight: native AOT for the final release (needs the Visual Studio C++ build tools). -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <ApplicationIcon>..\..\assets\SnapVox.ico</ApplicationIcon>
+    <Product>SnapVox</Product>
+    <Description>Select any text on your screen and listen to it in a natural voice.</Description>
+    <Copyright>© 2026 Samadhy · GPL-3.0</Copyright>
+  </PropertyGroup>
+
+  <!-- Release: dotnet publish -c Release -r win-x64 (or build.ps1). Native (AOT), Windows 64-bit only. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishAot>true</PublishAot>
+    <SelfContained>true</SelfContained>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <DebugType>none</DebugType>
+    <StripSymbols>true</StripSymbols>
+    <!-- The installer is the only way it's distributed; no debugging extras. -->
+    <EventSourceSupport>false</EventSourceSupport>
+    <UseSystemResourceKeys>false</UseSystemResourceKeys>
+  </PropertyGroup>
+
+  <!-- Portable build (build.ps1): the native libraries travel inside the exe. -->
+  <PropertyGroup Condition="'$(PortablePayload)' != ''">
+    <DefineConstants>$(DefineConstants);PORTABLE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(PortablePayload)' != ''">
+    <EmbeddedResource Include="$(PortablePayload)" LogicalName="SnapVox.Portable.zip" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SnapVox.EdgeTts\SnapVox.EdgeTts.csproj" />
+  </ItemGroup>
+
+</Project>
