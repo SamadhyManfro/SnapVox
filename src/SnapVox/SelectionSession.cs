@@ -38,6 +38,7 @@ internal sealed class SelectionSession
     private OcrOutput? _ocr;
     private bool _readingStarting;
     private IHotkeyService? _escape;
+    private Task? _escapeRegistered;
     private int _lastWord = -2;
     private int _generation; // ignores results from old selections/sessions
 
@@ -65,9 +66,12 @@ internal sealed class SelectionSession
         _generation++;
 
         // 1) Capture of every monitor at the moment of the hotkey (before any window of ours shows up).
+        UiWatchdog.Start();
+        UiWatchdog.Step("screen capture");
         _snapshot = _capture.CaptureAll();
 
-        // 2) Um escurecimento por monitor.
+        // 2) One dimming window per monitor.
+        UiWatchdog.Step("opening the dimming");
         var screens = ScreenInfo.All;
         foreach (var screen in screens)
         {
@@ -94,18 +98,27 @@ internal sealed class SelectionSession
         _island.VoiceChosen += OnVoiceChosen;
         _island.NewSelectionRequested += () => ResetForNewSelection(null);
         _island.SetSpeed(AppSettings.Current.Speed);
+        UiWatchdog.Step("opening the island");
         _island.Show();
 
         // Focus the dimming on the mouse's monitor so the keyboard (Space, arrows) works.
+        UiWatchdog.Step("focusing the dimming");
         _overlays.FirstOrDefault(o => o.TargetScreen == mouseScreen)?.Activate();
 
         // Esc as a system-wide hotkey while the island is open: closes even if the focus is on another window
         // (before, Esc sometimes went elsewhere and the reading kept going).
-        _escape = PlatformServices.CreateHotkeyService();
-        _escape.Pressed += () => Dispatcher.UIThread.Post(OnEscape);
-        if (!_escape.Register(HotkeyGesture.Escape))
-            Log.Info("Couldn't register the global Esc; only the dimming's Esc will work.");
+        // Registered off the UI thread, which must never wait for it.
+        UiWatchdog.Step("registering Esc");
+        var escape = PlatformServices.CreateHotkeyService();
+        escape.Pressed += () => Dispatcher.UIThread.Post(OnEscape);
+        _escape = escape;
+        _escapeRegistered = Task.Run(() =>
+        {
+            if (!escape.Register(HotkeyGesture.Escape))
+                Log.Info("Couldn't register the global Esc; only the dimming's Esc will work.");
+        });
         KeepIslandOnTop();
+        UiWatchdog.Step("session open");
         Log.Info($"Session started on {screens.Count} monitor(s).");
     }
 
@@ -523,8 +536,14 @@ internal sealed class SelectionSession
 
     public void Close()
     {
-        _escape?.Dispose(); // gives Esc back to other apps
+        UiWatchdog.Stop();
+        if (_escape is { } escape)
+        {
+            // Gives Esc back to other apps, after its registration finishes and without blocking the UI.
+            (_escapeRegistered ?? Task.CompletedTask).ContinueWith(_ => escape.Dispose(), TaskScheduler.Default);
+        }
         _escape = null;
+        _escapeRegistered = null;
         _generation++;
         _cts?.Cancel();
         _cts = null;
