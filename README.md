@@ -8,6 +8,10 @@
   Select any text on your screen and listen to it in a natural voice.
 </p>
 
+<p align="center">
+  <img src="docs/demo.gif" width="776" alt="SnapVox demo: the screen dims, a text is selected and read aloud with each word highlighted in a Dynamic Island–style player">
+</p>
+
 ---
 
 ## What it is
@@ -25,7 +29,7 @@ SnapVox lives in the Windows tray. Press **Win + Ctrl + R**, drag over any text 
 - **Lightweight**: idles in the tray without using CPU; compiled to native code.
 - UI in **English** or **Portuguese**, following the Windows language.
 
-See it in action: open [`docs/demo.html`](docs/demo.html) in your browser.
+Want to click around? Download [`docs/demo.html`](docs/demo.html) and open it in your browser for an interactive version.
 
 ## Shortcuts
 
